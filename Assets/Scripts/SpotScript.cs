@@ -1,51 +1,115 @@
-﻿using Oculus.Interaction;
-using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit;
+﻿using UnityEngine;
+using Oculus.Interaction;
 
-public class FlagSnapZone : MonoBehaviour
+public class SpotScript : MonoBehaviour
 {
-    private XRGrabInteractable flagInsideZone;
+    private Grabbable flag;
+    private Rigidbody flagRB;
 
-    void OnTriggerEnter(Collider other)
+    private bool flagInsideZone = false;
+    private bool wasHeldLastFrame = false;
+
+    public bool radiOne = false;
+    public bool radiTwo = false;
+    public bool radiThree = false;
+
+    private void OnTriggerEnter(Collider other)
     {
-        // Check tag
-        if (other.CompareTag("flag"))
+        if (!other.CompareTag("flag"))
         {
-            XRGrabInteractable grab = other.GetComponent<XRGrabInteractable>();
-            if (grab != null)
-            {
-                flagInsideZone = grab;
-
-                // Subscribe to release event
-                grab.selectExited.AddListener(OnFlagReleased);
-            }
+            print("Wrong Tag");
+            return;
         }
+
+        flag = other.GetComponent<Grabbable>();
+        if (flag == null)
+        {
+            print("Grabbable Null");
+            return;
+        }
+
+        flagRB = other.GetComponent<Rigidbody>();
+        if (flagRB == null)
+        {
+            print("rigid Null");
+            return;
+        }
+
+
+        flagInsideZone = true;
+        wasHeldLastFrame = flag.SelectingPointsCount > 0;
     }
 
-    void OnTriggerExit(Collider other)
+    private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("flag"))
-        {
-            XRGrabInteractable grab = other.GetComponent<XRGrabInteractable>();
-            if (grab != null)
-            {
-                // Remove listener and clear
-                grab.selectExited.RemoveListener(OnFlagReleased);
+        if (!other.CompareTag("flag"))
+            return;
 
-                if (flagInsideZone == grab)
-                    flagInsideZone = null;
-            }
-        }
+        if (flagRB != null)
+            Unfreeze(flagRB);
+
+        // Reset state
+        flagInsideZone = false;
+        wasHeldLastFrame = false;
+        flag = null;
+        flagRB = null;
     }
 
-    private void OnFlagReleased(SelectExitEventArgs args)
+    private void OnTriggerStay(Collider other)
     {
-        // Only parent it if still inside zone
-        if (flagInsideZone != null && args.interactableObject.transform == flagInsideZone.transform)
+        /*
+        if (!other.CompareTag("flag") || flag == null)
+            return;
+        */
+
+        bool isHeld = flag.SelectingPointsCount > 0;
+
+        // RELEASE DETECTION:
+        // Only triggers when:
+        //  1. It was held last frame
+        //  2. Now it is NOT held
+        if (flagInsideZone && wasHeldLastFrame && !isHeld)
         {
-            flagInsideZone.transform.SetParent(this.transform);
-            flagInsideZone.transform.localPosition = Vector3.zero; // optional snap to center
-            flagInsideZone.transform.localRotation = Quaternion.identity;
+            // RELEASED INSIDE THE ZONE → SNAP IT
+            Freeze(flagRB);
+            Snap(flag.transform);
         }
+
+        // Update for next frame
+        wasHeldLastFrame = isHeld;
     }
+
+    // --- Helpers ---
+
+    private void Freeze(Rigidbody rb)
+    {
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+
+        //rb.useGravity = false;
+        //rb.isKinematic = true;
+
+        rb.constraints = RigidbodyConstraints.FreezeAll;
+
+        Debug.Log("Flag frozen.");
+    }
+
+    private void Unfreeze(Rigidbody rb)
+    {
+        //rb.useGravity = true;
+        //rb.isKinematic = false;
+        rb.constraints = RigidbodyConstraints.None;
+
+        Debug.Log("Flag unfrozen.");
+    }
+
+    private void Snap(Transform t)
+    {
+        t.SetParent(transform);
+        t.localPosition = new Vector3(0f, 1f, 0f);   // <-- apply your 1-unit offset
+        t.localRotation = Quaternion.identity;
+
+        Debug.Log("Flag snapped with offset.");
+    }
+
 }

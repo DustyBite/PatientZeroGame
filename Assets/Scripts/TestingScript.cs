@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class TestingScript : MonoBehaviour
 {
@@ -14,6 +15,8 @@ public class TestingScript : MonoBehaviour
     public int radThree = 0;
     public int radFour = 0;
 
+    public bool checkFlagCorrect = false;
+
     Transform[,] coords = new Transform[yCord, xCord];
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -21,16 +24,27 @@ public class TestingScript : MonoBehaviour
     {
         CountAndSetSlots(this.transform);
         PickPoint();
-        GetNeighborsTest(radOne, Color.green);
-        GetNeighborsTest(radTwo, Color.yellow);
-        GetNeighborsTest(radThree, Color.orange);
+        GetNeighborsTest(radOne, Color.green, 1);
+        GetNeighborsTest(radTwo, Color.yellow, 2);
+        GetNeighborsTest(radThree, Color.orange, 3);
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+        checkSlot();
     }
+
+    public Transform getRandomPos()
+    {
+        int x = Random.Range(0, xCord);
+        int y = Random.Range(0, yCord);
+
+        Transform slot = coords[y, x];
+
+        return slot;   // now valid
+    }
+
 
     public void CountAndSetSlots(Transform parent)
     {
@@ -55,7 +69,7 @@ public class TestingScript : MonoBehaviour
         }
     }
 
-    public void TagPoint(Transform point, Color taggedColor)
+    public void TagPoint(Transform point, Color taggedColor, int radi)
     {
         // Find the cube child
         Transform cube = point.Find("Cube"); // assumes the child is named "Cube"
@@ -66,6 +80,7 @@ public class TestingScript : MonoBehaviour
             {
                 // Change the material color
                 renderer.material.color = taggedColor;
+                assignSlotData(radi, point);
             }
         }
         else
@@ -81,10 +96,11 @@ public class TestingScript : MonoBehaviour
 
         Transform child = coords[yP, xP];
 
-        TagPoint(child, Color.red);
+        TagPoint(child, Color.red, 0);
 
     }
 
+    /*
     public void GetNeighborsNew(int radius, Color taggedColor)
     {
         int resolution = 100;
@@ -106,8 +122,9 @@ public class TestingScript : MonoBehaviour
             //do your extra stuff here based on x and y
         }
     }
+    */
 
-    public void GetNeighborsTest(int radius, Color taggedColor)
+    public void GetNeighborsTest(int radius, Color taggedColor, int radi)
     {
         for (int dx = -radius; dx <= radius; dx++)
         {
@@ -124,7 +141,7 @@ public class TestingScript : MonoBehaviour
                 if (dx * dx + dy * dy <= radius * radius)
                 {
                     Transform child = coords[y, x];
-                    TagPoint(child, taggedColor);
+                    TagPoint(child, taggedColor, radi);
 
                     // Extra stuff here if needed
                 }
@@ -133,8 +150,43 @@ public class TestingScript : MonoBehaviour
 
 
         Transform origin = coords[yP, xP];
-        TagPoint(origin, Color.red);
+        TagPoint(origin, Color.red, 0);
 
     }
+
+    public void assignSlotData(int radi, Transform point)
+    {
+        SpotScript spot = point.GetComponent<SpotScript>();
+        if (radi == 1)
+        {
+            spot.radiOne = true;
+        }
+        else if (radi == 2)
+        {
+            spot.radiTwo = true;
+        }
+        else if(radi == 3)
+        {
+            spot.radiThree = true;
+        }
+    }
+
+
+
+    public void checkSlot()
+    {
+        Transform slot = coords[yP, xP];
+
+        Transform child = slot.Find("checkFlag");
+        if (child != null)
+        {
+            checkFlagCorrect = true;
+            Debug.Log("Flag found as child!");
+
+            // Restart level
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
+    }
+
 
 }
